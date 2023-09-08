@@ -1,0 +1,11 @@
+1、常用的调试方法：Debug.Log（输出）、Debug.LogWarning（警告）、Debug.LogError（错误）
+2、拿到当前脚本所挂载的游戏物体：GameObject go = this.gameObject;
+3、获取其他组件：BoxCollider ba=GetComponent<BoxCollider>();
+4、添加一个组件：Cude(物体名).AddComponent<AudioSource>();
+5、通过游戏物体名称来获取游戏物体：GameObject test=GameObject.Find("Test");
+6、通过游戏物体标签来获取游戏物体：GameObject test=GameObject.FindWithTag(" Player ");
+7、游戏开始到现在所花的时间：Debug.Log(Time.time);
+8、时间缩放值：Debug.Log(Time.timeScale);
+9、固定时间间隔：Debug.Log(Time.fixdDeltaTime);
+10、游戏数据文件夹路径（只读、加密压缩）：Debug.Log(Application.datapath+"/新建文本文档txt");
+11、持久化文件夹路径：Debug.Log(Application.persistentDataPath);
