@@ -1,0 +1,26 @@
+1、游戏场景的加载（游戏由许多游戏场景组成，场景由游戏物体组成，游戏物体由脚本组件组成）
+2、异步加载（多线程，协程）
+3、脚本编写Transform（控制父子关系）
+
+场景加载数量Debug.Log(SceneManager.sceneCount);
+创建新场景  SceneManager.CreateScene("newScene");//newScene为场景名称
+卸载场景 SceneManager.UnloadSceneAsync(newScene);
+
+协程方法来异步加载场景
+IEnumerator loadScene()
+{
+    operation = SceneManager.LoadSceneAsync(1);
+    //加载完场景不要自动跳转
+    operation.allowSceneActivation = false;
+    yield return operation;
+}
+调用协程 StartCoroutine(loadScene());
+
+
+子物体个数Debug.Log(transform.childCount);
+接触与子物体的父子关系transform.DetachChildren();
+获取子物体 Transform trans=transform.Find("Child");
+           transform.GetChild(0);//第二个方法
+判断这个物体是否为另一个物体的子物体 bool res = trans.IsChildOf(transform);
+                                    Debug.Log(res);
+设置父物体  trans.SetParent(transform);
