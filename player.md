@@ -9,21 +9,77 @@ public class player : MonoBehaviour
 
     public float fMaxForce = 500.0f;
     private float m_CurForce = 0.0f;
+
+    public GameObject Box = null;
+    public float fMinDistance = 1.2f;
+    public float fMaxDistance = 3.0f;
+    public float fMinHeight = 0.3f;
+    public float fMaxHeight = 2.0f;
+
+    private Vector3 m_Direction = Vector3.forward;
+    private float m_Distance = 0.0f;
+    private float m_Height = 0.0f;
+
+    private GameObject m_CurCube = null;
+    private GameObject m_NextCube = null;
+    private int m_Score = 0;
+
+    private Vector3 m_CameraOffest = Vector3.zero;
+    private GameObject m_Plane = null;
+
+    private Animator m_Animator = null;
     // Start is called before the first frame update
     void Start()
     {
         //获取模板函数
         m_RigidBody = GetComponent<Rigidbody>();
+        m_Animator = GetComponent<Animator>();
+        m_Plane = GameObject.FindGameObjectWithTag("Plane");
+        m_NextCube = GenerateBox();
     }
 
     // Update is called once per frame
     void Update()
     {
+        GameObject obj = GetHitObject();
+        if (obj != null)
+        {
+            if (obj.tag == "Cube")
+            {
+                if (m_CurCube == null)
+                {
+                    m_CurCube = obj;//游戏刚刚开始
+                    m_CameraOffest = Camera.main.transform.position - m_CurCube.transform.position;
+                }
+                else if (m_NextCube == obj)
+                {
+                    m_Score++;
+                    Debug.Log(m_Score);
+                    Destroy(m_CurCube);
+                    m_CurCube = m_NextCube;
+                    m_NextCube = GenerateBox();
+                    m_RigidBody.Sleep();
+                    m_RigidBody.WakeUp();
+                    m_Animator.SetBool("Forward", false);
+                    m_Animator.SetBool("Left", false);
+
+                }
+                ProcessInput();
+                ShowScale();
+
+                MoveCameraAndPlane();
+            }
+            else
+            {
+                //GameOver
+            }
+        }
+    }
+
+    private void ProcessInput()
+    {
         if (Input.GetMouseButtonDown(0))
         {
-            // Jump();
-            //蓄力
-            //m_CurForce += Time.deltaTime * 100;
         }
         else if (Input.GetMouseButton(0))
         {
@@ -38,26 +94,86 @@ public class player : MonoBehaviour
             Jump();
             m_CurForce = 0.0f;
         }
+    }
 
-        ShowScale();
+    private void MoveCameraAndPlane()
+    {
+        Camera.main.transform.position = Vector3.Lerp(Camera.main.transform.position,
+            m_CurCube.transform.position+m_CameraOffest,Time.deltaTime*2);
+
+
+        Vector3 pos = m_CurCube.transform.position;
+        pos.y = 0;
+        m_Plane.transform.position = pos;
     }
 
     //蓄力表现
     private void ShowScale()
     {
-        float sc = (fMaxForce - m_CurForce*0.5f) / fMaxForce;
-      /*  if (sc < 0.5f)
-        {
-            sc = 0.5f;
-        }  */
+        float sc = (fMaxForce - m_CurForce * 0.5f) / fMaxForce;
         Vector3 scale = transform.localScale;
         scale.y = sc * 0.2f;
         transform.localScale = scale;
     }
-    
+
     private void Jump()
     {
-        m_RigidBody.AddForce(Vector3.up*m_CurForce);
-        m_RigidBody.AddForce(Vector3.forward * m_CurForce);
+        m_RigidBody.AddForce(Vector3.up * m_CurForce);
+        m_RigidBody.AddForce(m_Direction * m_CurForce);
+        if (m_Direction == Vector3.forward)
+            m_Animator.SetBool("Forward", true);
+        else
+            m_Animator.SetBool("Left", true);
+
+        
+    }
+
+    private GameObject GenerateBox()
+    {
+        GameObject obj = GameObject.Instantiate(Box);
+
+        m_Distance = Random.Range(fMinDistance, fMaxDistance);
+        m_Height = Random.Range(fMinHeight, fMaxHeight);
+        m_Direction = Random.Range(0, 2) == 1 ? Vector3.forward : Vector3.left;
+
+        Vector3 pos = Vector3.zero;
+        if (m_CurCube == null)
+            pos = m_Direction * m_Distance + transform.position;
+        else
+            pos = m_Direction * m_Distance + m_CurCube.transform.position;
+
+        pos.y = 2.0f;
+        obj.transform.position = pos;
+
+        obj.transform.localScale = new Vector3(1, m_Height, 1);
+
+        obj.GetComponent<MeshRenderer>().material.color = new Color(Random.Range(0.0f, 1.0f), Random.Range(0.0f, 1.0f), Random.Range(0.0f, 1.0f));
+
+        return obj;
+    }
+
+
+    private GameObject GetHitObject()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, Vector3.down, out hit, 0.2f))
+        {
+            Debug.Log(hit.collider.tag);
+            return hit.collider.gameObject;
+        }
+        else
+        {
+            Vector3[] vOffests = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+            foreach (Vector3 vof in vOffests)
+            {
+                if (Physics.Raycast(transform.position + vof * 0.1f, Vector3.down, out hit, 0.2f))
+                {
+                    Debug.Log(hit.collider.tag);
+                    return hit.collider.gameObject;
+                }
+            }
+        }
+
+        return null;
     }
 }
