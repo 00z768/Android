@@ -10,7 +10,7 @@ public class player : MonoBehaviour
     public float fMaxForce = 500.0f;
     private float m_CurForce = 0.0f;
 
-    public GameObject Box = null;
+    public GameObject Box=null ;
     public float fMinDistance = 1.2f;
     public float fMaxDistance = 3.0f;
     public float fMinHeight = 0.3f;
@@ -22,18 +22,28 @@ public class player : MonoBehaviour
 
     private GameObject m_CurCube = null;
     private GameObject m_NextCube = null;
-    private int m_Score = 0;
+   // private int m_Score = 0;
 
     private Vector3 m_CameraOffest = Vector3.zero;
     private GameObject m_Plane = null;
 
     private Animator m_Animator = null;
+
+    private UIManager m_UI = null;
+    
+
+    private AudioSource m_AudioPlay = null;
+    public AudioClip PressAudio = null;
+    public AudioClip JumpAudio = null;
+    public AudioClip DownAudio = null;
     // Start is called before the first frame update
     void Start()
     {
         //获取模板函数
         m_RigidBody = GetComponent<Rigidbody>();
         m_Animator = GetComponent<Animator>();
+        m_UI = GetComponent<UIManager>();
+        m_AudioPlay = GetComponent<AudioSource>();
         m_Plane = GameObject.FindGameObjectWithTag("Plane");
         m_NextCube = GenerateBox();
     }
@@ -41,6 +51,7 @@ public class player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        
         GameObject obj = GetHitObject();
         if (obj != null)
         {
@@ -48,15 +59,17 @@ public class player : MonoBehaviour
             {
                 if (m_CurCube == null)
                 {
+                    PlayAudio(DownAudio);
                     m_CurCube = obj;//游戏刚刚开始
                     m_CameraOffest = Camera.main.transform.position - m_CurCube.transform.position;
                 }
-                else if (m_NextCube == obj)
+                else  if (m_NextCube == obj)
                 {
-                    m_Score++;
-                    Debug.Log(m_Score);
+                    PlayAudio(DownAudio);                               
+                    m_UI.SetPowerShow(true);
                     Destroy(m_CurCube);
                     m_CurCube = m_NextCube;
+                    AddScore();
                     m_NextCube = GenerateBox();
                     m_RigidBody.Sleep();
                     m_RigidBody.WakeUp();
@@ -69,21 +82,37 @@ public class player : MonoBehaviour
 
                 MoveCameraAndPlane();
             }
-            else
+            else  if(obj.tag=="Plane")
             {
-                //GameOver
+                m_UI.SetGameOver(true);
             }
         }
+        
+    }
+
+    private void AddScore()
+    {
+        Vector3 offest = m_CurCube.transform.position - transform.position;
+
+        offest.y = 0;
+
+        if(offest.sqrMagnitude < 0.2f )
+        {
+            m_UI.AddScore(2);
+        }
+        else
+            m_UI.AddScore(1);
     }
 
     private void ProcessInput()
     {
         if (Input.GetMouseButtonDown(0))
         {
+            PlayAudio(PressAudio);
         }
         else if (Input.GetMouseButton(0))
         {
-            m_CurForce += Time.deltaTime * 100;
+            m_CurForce += Time.deltaTime * fMaxForce/2.0f;
             if (m_CurForce > fMaxForce)
             {
                 m_CurForce = fMaxForce;
@@ -93,7 +122,9 @@ public class player : MonoBehaviour
         {
             Jump();
             m_CurForce = 0.0f;
+            m_UI.SetPowerShow(false);
         }
+        m_UI.ShowPower(m_CurForce, fMaxForce);
     }
 
     private void MoveCameraAndPlane()
@@ -118,8 +149,11 @@ public class player : MonoBehaviour
 
     private void Jump()
     {
+        PlayAudio(JumpAudio);
         m_RigidBody.AddForce(Vector3.up * m_CurForce);
-        m_RigidBody.AddForce(m_Direction * m_CurForce);
+        Vector3 dir = m_NextCube.transform.position - transform.position;
+        dir.y = 0;
+        m_RigidBody.AddForce(dir.normalized * m_CurForce);
         if (m_Direction == Vector3.forward)
             m_Animator.SetBool("Forward", true);
         else
@@ -156,24 +190,34 @@ public class player : MonoBehaviour
     private GameObject GetHitObject()
     {
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, Vector3.down, out hit, 0.2f))
+        Vector3[] vOffests = { Vector3.zero,Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+        foreach (Vector3 vof in vOffests)
         {
-            Debug.Log(hit.collider.tag);
-            return hit.collider.gameObject;
-        }
-        else
-        {
-            Vector3[] vOffests = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
-            foreach (Vector3 vof in vOffests)
+            if (Physics.Raycast(transform.position + vof * 0.1f, Vector3.down, out hit, 0.3f))
             {
-                if (Physics.Raycast(transform.position + vof * 0.1f, Vector3.down, out hit, 0.2f))
-                {
                     Debug.Log(hit.collider.tag);
                     return hit.collider.gameObject;
-                }
             }
         }
+        
 
         return null;
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Vector3[] vOffests = { Vector3.zero, Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+        foreach (Vector3 vof in vOffests)
+        {
+            Gizmos.DrawLine(transform.position + vof * 0.1f, transform.position + vof * 0.1f+Vector3.down*0.3f);
+        }
+    }
+
+    private void PlayAudio(AudioClip clp)
+    {
+        m_AudioPlay.Stop();
+        m_AudioPlay.clip = clp;
+        m_AudioPlay.Play();
     }
 }
